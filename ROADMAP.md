@@ -24,7 +24,7 @@ Shipped. See `README.md`.
 - Links, backlinks, transclusion (`{{embeds}}`), folders, daily log (§12)
 - Study: study mode, flashcards with spaced repetition, quiz, recall, Feynman check, exam mode, stats, leech detection, Anki import/export, speed reader (§15)
 - Writing: Markdown, spell check, lint, find/replace, snippets, templates, word swap, unit/date/colour helpers, quote capture, reading queue, inline pictures, modes (writing/coding/study), Right-Shift word navigation (§16, §17)
-- Coding: syntax highlighting, LSP, git gutter, folding, Vim mode, Emmet, embedded terminal pane, build runners, macros (§18; several live in the private plugins repo)
+- Coding: syntax highlighting, LSP, git gutter, folding, Vim mode, embedded terminal pane, build runners, macros (§18; several live in the private plugins repo)
 - Endless canvas, graph view, heading sizes, `{{note}}` embed size controls, pen ink on Wayland, touch
 - Local-first, plain Markdown files, no accounts (§3); terminal code removed
 

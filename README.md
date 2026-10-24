@@ -12,7 +12,7 @@ Version 0.2. See [ROADMAP.md](ROADMAP.md) for what is planned.
 - Word wrap, line numbers, minimap, sticky scroll, code folding, bookmarks (permanent and temporary)
 - Find, replace, find in files with an editable results document, regex builder
 - Split views by columns or rows, multiple documents as tabs
-- Macros (record, play, save), pipe selection through a command, Emmet expansion
+- Macros (record, play, save), pipe selection through a command
 - Spell check, lint, git gutter, syntax highlighting, diff against the saved file, time-travel history scrubber
 - Vim mode, typewriter scrolling, focus mode (paragraph or sentence), pomodoro timer, word statistics and frequency
 - Encodings and line endings (UTF-8, UTF-16, Latin-1; LF, CRLF, CR)
@@ -149,14 +149,6 @@ Defaults. Every binding can be changed in the key bindings list or in `~/.config
 | Ctrl+Alt+L | Redraw |
 
 Zoom: Ctrl+wheel or a pinch; Ctrl+0 resets (50-400%).
-
-### Emmet
-| Key | Action |
-|---|---|
-| Alt+B | Wrap with abbreviation |
-| Alt+Z / Alt+Shift+Z | Balance out / in |
-| Alt+] / Alt+[ | Next / previous edit point |
-| Alt+S | Update tag |
 
 ## Build and run
 
