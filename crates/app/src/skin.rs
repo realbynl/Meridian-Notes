@@ -860,6 +860,25 @@ pub fn installed(dir: &Path) -> Vec<String> {
     v
 }
 
+mod bundled {
+    include!(concat!(env!("OUT_DIR"), "/bundled_skins.rs"));
+}
+
+/// First run: when `dir/skins` does not exist yet, write the example skins into it. Never touches an existing folder.
+pub fn install_bundled(dir: &Path) {
+    let skins = dir.join("skins");
+    if skins.exists() {
+        return;
+    }
+    for (rel, bytes) in bundled::FILES {
+        let to = skins.join(rel);
+        let ok = to.parent().is_some_and(|p| std::fs::create_dir_all(p).is_ok());
+        if !ok || std::fs::write(&to, bytes).is_err() {
+            return;
+        }
+    }
+}
+
 /// Tests that touch the process-global store (or build an `App`, which installs a skin) hold this.
 #[cfg(test)]
 pub(crate) static TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -1353,6 +1372,19 @@ tab.bg = #405060
         }
         let have = text[a + BEGIN.len()..b].trim_start_matches('\n');
         assert_eq!(have, want, "docs/skins.md is out of date with Role::ALL; run with UPDATE_SKINS_DOC=1");
+    }
+
+    #[test]
+    fn install_bundled_fills_a_missing_folder_once() {
+        let d = tempdir();
+        install_bundled(&d);
+        let names = installed(&d);
+        assert!(names.iter().any(|n| n == "violet") && names.iter().any(|n| n == "metro-light"), "{names:?}");
+        assert!(d.join("skins/violet/skin.conf").is_file());
+        std::fs::remove_dir_all(d.join("skins/violet")).unwrap();
+        install_bundled(&d);
+        assert!(!d.join("skins/violet").exists(), "an existing folder is left alone");
+        let _ = std::fs::remove_dir_all(&d);
     }
 
     #[test]

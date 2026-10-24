@@ -56,6 +56,9 @@ fn main() {
             std::process::exit(2);
         }
     };
+    if let Some(dir) = meridian_app::commands::config_dir() {
+        meridian_app::skin::install_bundled(&dir);
+    }
     if let Err(e) = app_loop::run(args, started, replay) {
         eprintln!("meridian: That's sad. {e}");
         std::process::exit(1);
