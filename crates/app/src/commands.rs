@@ -166,6 +166,8 @@ pub enum Cmd {
     /// Move the touched lines up (true) or down.
     MoveLines(bool),
     NewTab,
+    /// Add a section (folder) to the open notebook.
+    NewSection,
     /// Ctrl+N: choose a file type and template for a new file.
     NewFile,
     Indent,
@@ -451,6 +453,7 @@ pub fn builtin() -> Vec<Entry> {
         e!("new-file-alt", Some("alt+n"), Cmd::NewFile),
         e!("new-tab", Some("ctrl+t"), Cmd::NewTab),
         e!("new-tab-alt", Some("alt+t"), Cmd::NewTab),
+        e!("new-section", None, Cmd::NewSection),
         e!("close-buffer", Some("ctrl+w"), Cmd::CloseBuffer),
         e!("close-buffer-alt", Some("alt+w"), Cmd::CloseBuffer),
         e!("undo", Some("ctrl+z"), Cmd::Undo),

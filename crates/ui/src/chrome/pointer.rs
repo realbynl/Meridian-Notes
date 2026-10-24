@@ -405,7 +405,7 @@ impl Chrome {
             "doc.tab" => m.docs.get(w.index).map(|i| UiAction::SelectDoc(i.id)),
             "doc.close" => m.docs.get(w.index).map(|i| UiAction::CloseDoc(i.id)),
             "pg.add" => Some(UiAction::NewPage),
-            "sec.add" => Some(UiAction::NewSection),
+            "sec.add" => Some(UiAction::RunCommand("new-tab".into())),
             "rb.discord" => Some(UiAction::RunCommand("social".into())),
             "tb.min" => Some(UiAction::Window(WinOp::Minimize)),
             "tb.max" => Some(UiAction::Window(WinOp::ToggleMaximize)),
@@ -822,9 +822,9 @@ mod tests {
     // ---- additions beyond the brief ----
 
     #[test]
-    fn the_add_buttons_emit_new_page_and_new_section() {
+    fn the_add_buttons_emit_new_page_and_new_tab() {
         let (mut c, _m, _s, _t) = setup();
-        for (k, want) in [("pg.add", UiAction::NewPage), ("sec.add", UiAction::NewSection)] {
+        for (k, want) in [("pg.add", UiAction::NewPage), ("sec.add", UiAction::RunCommand("new-tab".into()))] {
             let at = center(&c, Id { kind: k, index: 0 });
             c.pointer(ptr(PointerKind::Down(Button::Left), at));
             assert_eq!(c.pointer(ptr(PointerKind::Up(Button::Left), at)).actions, [want]);

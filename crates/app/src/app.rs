@@ -2516,6 +2516,7 @@ impl App {
                     self.buf.break_group();
                 }
             }
+            Cmd::NewSection => self.handle_action(crate::chrome_model::UiAction::NewSection),
             Cmd::NewTab => {
                 self.docs.push(Doc::default());
                 self.switch(self.docs.len() - 1);
