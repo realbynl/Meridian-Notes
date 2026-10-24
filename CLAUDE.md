@@ -6,7 +6,6 @@ is the terminal editor it was forked from. Nothing is backported to the legacy e
 ## Read first
 - `docs/superpowers/plans/2026-10-12-meridian-gui-port.md`: the current plan and phase status.
 - `BACKLOG.md`: features wanted but not planned in detail.
-- `docs/legacy/`: docs for the terminal version. Reference only; see its README. Do not treat it as current.
 
 ## Where things stand (2026-10-12)
 Phases 0-2 of the plan are done: `crates/gui` (binary `meridian`) opens the editor in a native window using a CPU painter
