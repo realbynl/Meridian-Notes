@@ -417,7 +417,9 @@ impl Chrome {
         if overflow {
             strip = strip.child(Node::new(id("sec.left", 0)).size(Size::Fixed(chev), fill));
         }
-        strip = strip.child(Node::new(id("sec.tabs", 0)).size(fill, fill)).child(Node::new(id("sec.add", 0)).size(Size::Fixed(chev), fill));
+        // With the section tabs in the side pane this cell would be empty, so the document tabs take it.
+        let docs_in_strip = side_tabs && !m.hide_docs;
+        strip = strip.child(Node::new(id(if docs_in_strip { "doc.strip" } else { "sec.tabs" }, 0)).size(fill, fill)).child(Node::new(id("sec.add", 0)).size(Size::Fixed(chev), fill));
         if overflow {
             strip = strip.child(Node::new(id("sec.right", 0)).size(Size::Fixed(chev), fill));
         }
@@ -445,6 +447,7 @@ impl Chrome {
         // Open-document tabs, whenever a document is open (the app lists none for an untouched untitled buffer): each holds an optional dirty dot, the name (cut at a
         // layout maximum) and a close button, and is never wider than the strip.
         let show_docs = !m.docs.is_empty() && !m.hide_docs;
+        let separate_strip = show_docs && !docs_in_strip;
         let doc_look = sheet.look(W::DocTab, State::Normal);
         let (icon, gap) = (sheet.slot(Slot::IconSize).max(1), sheet.slot(Slot::Gap));
         let label_max = (DOC_LABEL_MAX_LOGICAL_W as f32 * self.scale).round() as i32;
@@ -462,7 +465,7 @@ impl Chrome {
         };
         let doc_total = doc_w.iter().fold(0i32, |a, w| a.saturating_add(*w));
         let mut centre = Node::new(id("centre", 0)).axis(Axis::Column).size(fill, fill).child(strip);
-        if show_docs {
+        if separate_strip {
             centre = centre.child(Node::new(id("doc.strip", 0)).size(fill, Size::Fixed(sheet.slot(Slot::DocTabHeight))));
         }
         let centre = centre.child(body);
@@ -1605,6 +1608,24 @@ mod doctab_tests {
         let (sec, body, centre) = (c.rect_of(id("sections", 0)).unwrap(), c.rect_of(id("body", 0)).unwrap(), c.rect_of(id("centre", 0)).unwrap());
         assert_eq!((strip.x, strip.w, strip.h), (centre.x, centre.w, s.slot(Slot::DocTabHeight)));
         assert_eq!((strip.y, body.y), (sec.bottom(), strip.bottom()));
+    }
+
+    #[test]
+    fn with_the_section_tabs_on_the_side_the_document_tabs_fill_the_top_strip() {
+        let (mut m, s, mut t) = fixture(3);
+        m.tabs_side = true;
+        m.docs = docs(3);
+        let mut c = Chrome::new();
+        c.update(&m, &s, &mut t, (1200, 800));
+        let (strip, sections) = (c.rect_of(id("doc.strip", 0)).unwrap(), c.rect_of(id("sections", 0)).unwrap());
+        assert_eq!((strip.y, strip.h), (sections.y, sections.h), "no second row");
+        assert_eq!(c.rect_of(id("body", 0)).unwrap().y, sections.bottom());
+        let (tab, add) = (c.rect_of(id("doc.tab", 0)).unwrap(), c.rect_of(id("sec.add", 0)).unwrap());
+        assert!(tab.intersect(&add).is_empty() && tab.x >= strip.x);
+        m.hide_docs = true;
+        m.version += 1;
+        c.update(&m, &s, &mut t, (1200, 800));
+        assert!(c.rect_of(id("doc.strip", 0)).is_none() && c.rect_of(id("doc.tab", 0)).is_none());
     }
 
     #[test]
