@@ -68,7 +68,7 @@ pub(crate) enum Drag {
 
 /// Widgets that react to the pointer (hover, press, cursor).
 fn interactive(kind: &str) -> bool {
-    matches!(kind, "sec.tab" | "nb.row" | "pg.row" | "pg.add" | "sec.add" | "sec.left" | "sec.right" | "nb.thumb" | "pg.thumb" | "split.nb" | "split.pg" | "tb.qa" | "rb.discord" | "tb.opts" | "tb.min" | "tb.max" | "tb.close" | "rb.btn" | "rb.gdrop" | "rb.file" | "rb.tab" | "rb.collapse" | "search" | "doc.tab" | "doc.close" | "fw.menu" | "fw.expand" | "fw.pad" | "rb.expand" | "ink.finish" | "ink.shrink")
+    matches!(kind, "sec.tab" | "nb.row" | "pg.row" | "pg.add" | "sec.add" | "doc.add" | "sec.left" | "sec.right" | "nb.thumb" | "pg.thumb" | "split.nb" | "split.pg" | "tb.qa" | "rb.discord" | "tb.opts" | "tb.min" | "tb.max" | "tb.close" | "rb.btn" | "rb.gdrop" | "rb.file" | "rb.tab" | "rb.collapse" | "search" | "doc.tab" | "doc.close" | "fw.menu" | "fw.expand" | "fw.pad" | "rb.expand" | "ink.finish" | "ink.shrink")
 }
 
 /// The document tab a widget belongs to (its close button counts as the tab), for middle clicks.
@@ -82,7 +82,7 @@ fn scroll_of(kind: &str) -> Option<usize> {
         "sec.tab" | "sec.tabs" | "sections" | "sec.left" | "sec.right" | "sec.add" => Some(0),
         "nb.row" | "nb.list" | "nb.thumb" | "notebooks" => Some(1),
         "pg.row" | "pg.list" | "pg.thumb" | "pg.add" | "pages" => Some(2),
-        "doc.tab" | "doc.close" | "doc.strip" => Some(3),
+        "doc.tab" | "doc.close" | "doc.strip" | "doc.tabs" => Some(3),
         _ => None,
     }
 }
@@ -406,6 +406,7 @@ impl Chrome {
             "doc.close" => m.docs.get(w.index).map(|i| UiAction::CloseDoc(i.id)),
             "pg.add" => Some(UiAction::NewPage),
             "sec.add" => Some(UiAction::NewSection),
+            "doc.add" => Some(UiAction::RunCommand("new-tab".into())),
             "rb.discord" => Some(UiAction::RunCommand("social".into())),
             "tb.min" => Some(UiAction::Window(WinOp::Minimize)),
             "tb.max" => Some(UiAction::Window(WinOp::ToggleMaximize)),
@@ -1676,6 +1677,15 @@ mod tests {
         let mut c = Chrome::new();
         c.update(&m, &s, &mut t, (1200, 800));
         (c, m, s, t)
+    }
+
+    #[test]
+    fn the_document_strip_add_button_opens_a_new_tab_even_with_no_documents() {
+        for n in [0, 3] {
+            let (mut c, _m, _s, _t) = doc_setup(n);
+            let add = center(&c, Id { kind: "doc.add", index: 0 });
+            assert_eq!(click(&mut c, add), [UiAction::RunCommand("new-tab".into())], "{n} documents");
+        }
     }
 
     #[test]

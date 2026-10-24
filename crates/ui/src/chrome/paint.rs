@@ -284,6 +284,12 @@ impl Chrome {
             pen.canvas.clip(strip.intersect(&area));
             self.paint_doc_tabs(pen, damage);
             pen.canvas.clip(area);
+            if let Some(r) = rect("doc.add").filter(|r| hits(damage, *r)) {
+                let look = sheet.look(W::Button, self.state_of(Id { kind: "doc.add", index: 0 }, false, State::Normal));
+                pen.boxed(r, look);
+                let size = sheet.slot(Slot::IconSize).max(1);
+                pen.icon(IconName::Add, r.x + (r.w - size) / 2, r.y + (r.h - size) / 2, look.fg);
+            }
         }
         // The "Add Page" bar on top of the pages list: the add icon and its caption.
         if let Some(r) = rect("pg.add").filter(|r| hits(damage, *r)) {
