@@ -1,0 +1,12 @@
+[package]
+name = "meridian-buffer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ropey = "1.6"                 # rope: O(log n) edits, streaming load, cheap slices
+unicode-segmentation = "1.12" # grapheme-aware cursor movement
+unicode-width = "0.2"         # display column math
+
+[dev-dependencies]
+proptest = { version = "1", default-features = false, features = ["std"] }

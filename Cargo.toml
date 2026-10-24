@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/buffer", "crates/term", "crates/app", "crates/gui", "crates/ui"]
+
+[workspace.package]
+version = "0.0.9"
+edition = "2021"
+license = "MIT"
+
+[profile.release]
+opt-level = 3        # switch to "s" if binary size matters more than speed
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

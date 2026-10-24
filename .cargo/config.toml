@@ -1,0 +1,6 @@
+# Cross build:  cargo build --release --target armv7-unknown-linux-musleabihf
+# Needs the target's std (rustup target add ...) and a linker, see scripts/build-arm.sh.
+[target.armv7-unknown-linux-musleabihf]
+linker = "arm-linux-musleabihf-gcc"
+# Cortex-A8 (OpenPandora): ARMv7-A, VFPv3, NEON.
+rustflags = ["-C", "target-cpu=cortex-a8", "-C", "target-feature=+crt-static"]

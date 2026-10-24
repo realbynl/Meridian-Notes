@@ -1,0 +1,287 @@
+diff -u a/crates/onyx/src/app/extras.rs b/crates/onyx/src/app/extras.rs
+--- a/crates/onyx/src/app/extras.rs	2026-10-06 14:32:52.118228981 +0100
++++ b/crates/onyx/src/app/extras.rs	2026-10-06 14:32:52.076362332 +0100
+@@ -56,6 +56,7 @@
+     /// Run a built-in action registered as `Cmd::Ex(name)`.
+     pub(super) fn ex_run(&mut self, name: &str) {
+         match name {
++            "redraw" => self.screen.invalidate(),
+             "mode-picker" => self.open_mode_picker(),
+             "color-picker" => self.open_color_picker(),
+             "word-swap" => {
+diff -u a/crates/onyx/src/app/nav.rs b/crates/onyx/src/app/nav.rs
+--- a/crates/onyx/src/app/nav.rs	2026-10-06 14:32:52.122252235 +0100
++++ b/crates/onyx/src/app/nav.rs	2026-10-06 14:32:52.070279265 +0100
+@@ -719,6 +719,9 @@
+     // ---- Goto Anything --------------------------------------------------------------------
+ 
+     pub(super) fn open_goto(&mut self, prefill: &str) {
++        if prefill.is_empty() {
++            self.remember_palette(false);
++        }
+         let saved = (self.buf.sels().to_vec(), self.top, self.left);
+         self.goto = Some(GotoState {
+             input: prefill.to_string(),
+@@ -1051,10 +1054,10 @@
+             Some("enter") => return self.goto_accept(),
+             Some("up") => g.sel = g.sel.saturating_sub(1),
+             Some("down") => g.sel = (g.sel + 1).min(g.items.len().saturating_sub(1)),
+-            // Right on an empty entry switches to the headers (symbols) of this file.
+-            Some("right") if g.input.is_empty() && g.fixed.is_none() => {
+-                g.input.push('@');
+-                return self.goto_refresh();
++            // Left/Right swap to the Command Palette.
++            Some("left" | "right") if g.fixed.is_none() => {
++                self.goto_cancel();
++                return self.run(Cmd::Palette);
+             }
+             Some("pageup") => g.sel = g.sel.saturating_sub(8),
+             Some("pagedown") => g.sel = (g.sel + 8).min(g.items.len().saturating_sub(1)),
+diff -u a/crates/onyx/src/app.rs b/crates/onyx/src/app.rs
+--- a/crates/onyx/src/app.rs	2026-10-06 14:32:52.121840421 +0100
++++ b/crates/onyx/src/app.rs	2026-10-06 14:32:52.064360526 +0100
+@@ -325,6 +325,8 @@
+     docs: Vec<Doc>, // slot `cur` is a stale placeholder: the active doc lives in the fields below
+     cur: usize,
+     palette: Option<Palette>,
++    /// The palette Ctrl+P opens: the Command Palette (true) or Goto Anything, whichever was used last.
++    last_command_palette: bool,
+     filetree: Option<FileTree>,
+     welcome_sel: usize,
+     /// The open tab of the `?` info page, or None on the home screen.
+@@ -694,6 +696,7 @@
+         follow: true,
+         batches: HashMap::new(),
+         palette: None,
++        last_command_palette: std::fs::read_to_string(palette_memo().unwrap_or_default()).is_ok_and(|t| t.trim() == "command"),
+         filetree: None,
+         welcome_sel: 0,
+         welcome_info: None,
+@@ -1872,6 +1875,7 @@
+                 sel: 0,
+                 scroll: 0,
+             });
++            self.remember_palette(true);
+             return;
+         }
+         if matches!(cmd, Cmd::Open) {
+@@ -2085,6 +2089,7 @@
+             Cmd::FindNext => self.find_step(true),
+             Cmd::FindPrev => self.find_step(false),
+             Cmd::UseSelectionForFind => self.use_selection_for_find(),
++            Cmd::Goto("") if self.last_command_palette => self.run_inner(Cmd::Palette),
+             Cmd::Goto(pre) => self.open_goto(pre),
+             Cmd::GotoDefinition => self.goto_definition(),
+             Cmd::NextResult => self.step_result(true),
+@@ -2951,11 +2956,23 @@
+         self.palette = None;
+         self.filetree = None;
+         if !same {
+-            self.run(cmd);
++            match cmd {
++                Cmd::Goto(pre) => self.open_goto(pre),
++                c => self.run(c),
++            }
+         }
+         true
+     }
+ 
++    /// Note which of the two palettes was used last (Ctrl+P reopens it) and keep that across runs.
++    pub(super) fn remember_palette(&mut self, command: bool) {
++        if self.last_command_palette != command {
++            self.last_command_palette = command;
++            if let Some(p) = palette_memo() {
++                let _ = std::fs::write(p, if command { "command" } else { "goto" });
++            }
++        }
++    }
+ 
+     fn palette_key(&mut self, k: KeyEvent) {
+         if self.overlay_switch(k) {
+@@ -2983,12 +3000,10 @@
+             }
+             KeyCode::Up => p.sel = p.sel.saturating_sub(1),
+             KeyCode::Down => p.sel = (p.sel + 1).min((p.nat.len() + p.hits.len()).saturating_sub(1)),
+-            // Right on an empty entry switches to the snippets.
+-            KeyCode::Right if p.input.is_empty() => {
+-                p.input = "snippet: ".into();
+-                p.hits = self.keys.filter(&p.input);
+-                p.nat.clear();
+-                p.sel = 0;
++            // Left/Right swap to Goto Anything.
++            KeyCode::Left | KeyCode::Right => {
++                self.palette = None;
++                self.open_goto("");
+             }
+             KeyCode::Backspace => {
+                 p.input.pop();
+@@ -4862,6 +4877,10 @@
+     }
+ }
+ 
++fn palette_memo() -> Option<PathBuf> {
++    commands::config_dir().map(|d| d.join("last-palette"))
++}
++
+ /// Next terminal event. Old VTE terminals (OpenPandora's Xfce Terminal) send Alt+arrow as
+ /// `ESC ESC [ D`, which crossterm reads as Esc, `[`, `D`; fold those back into Alt+arrow.
+ fn next_event(pending: &mut std::collections::VecDeque<Event>) -> io::Result<Event> {
+diff -u a/crates/onyx/src/commands.rs b/crates/onyx/src/commands.rs
+--- a/crates/onyx/src/commands.rs	2026-10-06 14:32:52.118084399 +0100
++++ b/crates/onyx/src/commands.rs	2026-10-06 14:32:52.056596077 +0100
+@@ -360,6 +360,7 @@
+         e!("list-items-alt", Some("ctrl+u"), Cmd::Lists),
+         e!("mode-picker", Some("ctrl+m"), Cmd::Ex("mode-picker")),
+         e!("mode-picker-alt", Some("alt+m"), Cmd::Ex("mode-picker")),
++        e!("redraw", Some("ctrl+alt+l"), Cmd::Ex("redraw")),
+         e!("toggle-mode", None, Cmd::ToggleMode),
+         e!("word-swap", None, Cmd::Ex("word-swap")),
+         e!("color-picker", None, Cmd::Ex("color-picker")),
+@@ -461,6 +462,7 @@
+         e!("only-view", Some("alt+1"), Cmd::OnlyView),
+         e!("command-palette-alt", Some("f1"), Cmd::Palette),
+         e!("menu", Some("f10"), Cmd::MenuBar),
++        e!("menu-alt", Some("alt+`"), Cmd::MenuBar),
+         e!("toggle-sidebar", Some("ctrl+;"), Cmd::Toggle("sidebar")),
+         e!("show-left-sidebar", Some("ctrl+alt+left"), Cmd::ShowSide(false)),
+         e!("show-right-sidebar", Some("ctrl+alt+right"), Cmd::ShowSide(true)),
+diff -u a/crates/term/src/lib.rs b/crates/term/src/lib.rs
+--- a/crates/term/src/lib.rs	2026-10-06 14:32:52.111594934 +0100
++++ b/crates/term/src/lib.rs	2026-10-06 14:32:52.050399656 +0100
+@@ -43,15 +43,102 @@
+     0x100_0000 | (r as u32) << 16 | (g as u32) << 8 | b as u32
+ }
+ 
++/// How many colours the terminal can show: 16, 256 or 16.7M. `ONYX_COLORS` (16|256|truecolor) overrides detection.
++fn depth() -> u32 {
++    static D: std::sync::OnceLock<u32> = std::sync::OnceLock::new();
++    *D.get_or_init(|| {
++        let env = |k: &str| std::env::var(k).unwrap_or_default().to_lowercase();
++        match env("ONYX_COLORS").as_str() {
++            "16" => return 16,
++            "256" => return 256,
++            "truecolor" | "24bit" => return 1 << 24,
++            _ => {}
++        }
++        let (ct, term) = (env("COLORTERM"), env("TERM"));
++        if ct.contains("truecolor") || ct.contains("24bit") || term.contains("direct") || term.contains("kitty") {
++            1 << 24
++        } else if term.contains("256") || (!ct.is_empty() && term.starts_with("xterm")) {
++            // A desktop terminal (Xfce Terminal sets COLORTERM=Terminal) draws the 256 palette.
++            256
++        } else {
++            16
++        }
++    })
++}
++
++/// Whether the terminal understands DECSCUSR (cursor shape). Old VTE (Xfce Terminal 0.4, the OpenPandora's)
++/// and the Linux console print the sequence's tail as text. `ONYX_CURSOR_SHAPE=0|1` overrides.
++fn cursor_shapes_ok() -> bool {
++    static D: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
++    *D.get_or_init(|| {
++        let env = |k: &str| std::env::var(k).unwrap_or_default();
++        match env("ONYX_CURSOR_SHAPE").as_str() {
++            "0" => return false,
++            "1" => return true,
++            _ => {}
++        }
++        let old_vte = env("VTE_VERSION").parse::<u32>().is_ok_and(|v| v < 3900);
++        !(old_vte || env("TERM") == "linux" || env("COLORTERM") == "Terminal")
++    })
++}
++
++fn palette_rgb(i: u8) -> (u8, u8, u8) {
++    const BASE: [(u8, u8, u8); 16] = [
++        (0, 0, 0), (205, 0, 0), (0, 205, 0), (205, 205, 0), (0, 0, 238), (205, 0, 205), (0, 205, 205), (229, 229, 229),
++        (127, 127, 127), (255, 0, 0), (0, 255, 0), (255, 255, 0), (92, 92, 255), (255, 0, 255), (0, 255, 255), (255, 255, 255),
++    ];
++    match i {
++        0..=15 => BASE[i as usize],
++        16..=231 => {
++            let n = i - 16;
++            let l = |v: u8| if v == 0 { 0 } else { 55 + 40 * v };
++            (l(n / 36), l(n / 6 % 6), l(n % 6))
++        }
++        _ => {
++            let v = 8 + 10 * (i - 232);
++            (v, v, v)
++        }
++    }
++}
++
++fn nearest(r: u8, g: u8, b: u8, range: std::ops::RangeInclusive<u8>) -> u8 {
++    let d = |p: (u8, u8, u8)| {
++        let sq = |a: u8, b: u8| (a as i32 - b as i32).pow(2);
++        sq(p.0, r) + sq(p.1, g) + sq(p.2, b)
++    };
++    range.min_by_key(|&i| d(palette_rgb(i))).unwrap_or(0)
++}
++
+ fn color(c: u32) -> Color {
+-    if c < 256 {
+-        Color::AnsiValue(c as u8)
+-    } else {
+-        Color::Rgb {
+-            r: (c >> 16) as u8,
+-            g: (c >> 8) as u8,
+-            b: c as u8,
++    let (r, g, b) = if c < 256 {
++        if depth() >= 256 {
++            return Color::AnsiValue(c as u8);
+         }
++        palette_rgb(c as u8)
++    } else {
++        ((c >> 16) as u8, (c >> 8) as u8, c as u8)
++    };
++    match depth() {
++        d if d > 256 => Color::Rgb { r, g, b },
++        256 => Color::AnsiValue(nearest(r, g, b, 16..=255)),
++        _ => match nearest(r, g, b, 0..=15) {
++            0 => Color::Black,
++            1 => Color::DarkRed,
++            2 => Color::DarkGreen,
++            3 => Color::DarkYellow,
++            4 => Color::DarkBlue,
++            5 => Color::DarkMagenta,
++            6 => Color::DarkCyan,
++            7 => Color::Grey,
++            8 => Color::DarkGrey,
++            9 => Color::Red,
++            10 => Color::Green,
++            11 => Color::Yellow,
++            12 => Color::Blue,
++            13 => Color::Magenta,
++            14 => Color::Cyan,
++            _ => Color::White,
++        },
+     }
+ }
+ 
+@@ -326,8 +413,10 @@
+         }
+         if self.cursor_shape != self.shape_sent {
+             self.shape_sent = self.cursor_shape;
+-            write!(buf, "\x1b[{} q", self.cursor_shape).ok();
+-            CURSOR_SHAPED.store(self.cursor_shape != 0, Ordering::Relaxed);
++            if cursor_shapes_ok() {
++                write!(buf, "\x1b[{} q", self.cursor_shape).ok();
++                CURSOR_SHAPED.store(self.cursor_shape != 0, Ordering::Relaxed);
++            }
+         }
+         // On a cell painted in the cursor's own colour (a header in the accent) the cursor would
+         // vanish: use the cell's text colour there instead.
+diff -u a/scripts/build-arm.sh b/scripts/build-arm.sh
+--- a/scripts/build-arm.sh	2026-10-06 14:32:52.122351712 +0100
++++ b/scripts/build-arm.sh	2026-10-06 14:32:52.082741076 +0100
+@@ -16,8 +16,8 @@
+     # zig supplies its own crt/libc; don't also link rustc's bundled copies
+     export RUSTFLAGS="${RUSTFLAGS:-} -C link-self-contained=no"
+ fi
+-cargo build --release --target "$TARGET" -p onyx -p onyx-terminal
+-for BIN in "target/$TARGET/release/onyx" "target/$TARGET/release/onyx-terminal"; do
++cargo build --release --target "$TARGET" -p onyx -p onyx-terminal -p onyx-syntax
++for BIN in "target/$TARGET/release/onyx" "target/$TARGET/release/onyx-terminal" "target/$TARGET/release/onyx-syntax"; do
+     ls -l "$BIN"
+     file "$BIN" 2>/dev/null || true   # expect: ELF 32-bit ... ARM ... statically linked
+ done

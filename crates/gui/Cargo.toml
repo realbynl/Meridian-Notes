@@ -1,0 +1,27 @@
+[package]
+name = "meridian"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "meridian"
+path = "src/main.rs"
+
+[dependencies]
+meridian-app = { path = "../app" }
+meridian-term = { path = "../term" }
+meridian-ui = { path = "../ui" }
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "x11", "wayland", "wayland-dlopen"] }
+softbuffer = { version = "0.4", default-features = false, features = ["x11", "wayland", "kms"] }
+ab_glyph = "0.2"
+ttf-parser = { version = "0.25", default-features = false, features = ["std"] } # colour emoji bitmaps (CBDT/sbix); already in the tree via ab_glyph
+png = { version = "0.18", default-features = false } # decodes those bitmaps; already in the tree
+
+# The pen: winit gives no tablet data on Linux, so a second event queue on the window's own Wayland connection
+# reads zwp_tablet_v2. Both are already in the tree through winit (user-approved as direct dependencies 2026-10-22).
+[target.'cfg(target_os = "linux")'.dependencies]
+wayland-client = { version = "0.31", features = ["system", "dlopen"] }
+wayland-protocols = { version = "0.32", features = ["client", "unstable"] }
+
+[dev-dependencies]

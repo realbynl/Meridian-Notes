@@ -1,0 +1,14 @@
+[package]
+name = "meridian-app"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "meridian_app"
+path = "src/lib.rs"
+
+[dependencies]
+meridian-buffer = { path = "../buffer" }
+meridian-term = { path = "../term" }
+regex = { version = "1", default-features = false, features = ["std", "unicode", "perf"] } # find, replace, symbols
+png = { version = "0.18", default-features = false } # skin images (already in the tree via meridian-term)

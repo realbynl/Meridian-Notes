@@ -1,0 +1,12 @@
+# A short stroke over the editor, hover first: phase x y pressure tool
+enter 590 395 0 pen
+hover 595 398 0 pen
+down 600 400 0.3 pen
+move 612 404 0.5 pen
+move 626 410 0.7 pen
+move 640 412 0.8 pen
+move 655 408 0.6 pen
+move 668 402 0.4 pen
+up 668 402 0 pen
+hover 672 398 0 pen
+leave 700 380 0 pen

@@ -1,0 +1,13 @@
+[package]
+name = "meridian-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+meridian-app = { path = "../app" }
+meridian-term = { path = "../term" }
+ab_glyph = "0.2"
+
+[dev-dependencies]
+png = { version = "0.18", default-features = false }
