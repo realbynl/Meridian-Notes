@@ -1,13 +1,13 @@
 name: Test build release
 
-# Push a tag like v0.0.9-test1 (or run the workflow by hand with a tag name) to build and publish a pre-release.
+# Push a tag like v0.2.0-test1 (or run the workflow by hand with a tag name) to build and publish a pre-release.
 on:
   push:
     tags: ["v*-test*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag, e.g. v0.0.9-test1"
+        description: "Release tag, e.g. v0.2.0-test1"
         required: true
 
 permissions:

@@ -666,7 +666,7 @@ dependencies = [
 
 [[package]]
 name = "meridian"
-version = "0.0.9"
+version = "0.2.0"
 dependencies = [
  "ab_glyph",
  "meridian-app",
@@ -682,7 +682,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-app"
-version = "0.0.9"
+version = "0.2.0"
 dependencies = [
  "meridian-buffer",
  "meridian-term",
@@ -692,7 +692,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-buffer"
-version = "0.0.9"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "ropey",
@@ -702,7 +702,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-term"
-version = "0.0.9"
+version = "0.2.0"
 dependencies = [
  "png",
  "unicode-width",
@@ -712,7 +712,7 @@ dependencies = [
 
 [[package]]
 name = "meridian-ui"
-version = "0.0.9"
+version = "0.2.0"
 dependencies = [
  "ab_glyph",
  "meridian-app",
