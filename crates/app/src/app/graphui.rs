@@ -6,6 +6,7 @@ use super::*;
 use crate::dialog_model::{GraphAction, GraphModel, GraphNode, GraphSettings};
 use crate::graph;
 use std::sync::Arc;
+use super::linkui::INDEX_EXTS;
 
 /// What the cached nodes were built from; the options that only change the drawing are not part of it.
 #[derive(PartialEq, Clone)]
@@ -40,6 +41,8 @@ pub(super) struct GraphUi {
     /// The ribbon button's panel: beside the editor, following the open note, the keys stay with the editor.
     pub docked: bool,
     cached: Option<Cached>,
+    /// The note and buffer version whose links the index last took from the buffer or disk.
+    seen: Option<(PathBuf, u64)>,
 }
 
 fn conf_path() -> Option<PathBuf> {
@@ -53,7 +56,7 @@ impl App {
 
     pub(super) fn graph_open_as(&mut self, local: bool, fill: bool) {
         let s = conf_path().and_then(|p| std::fs::read_to_string(p).ok()).map_or_else(GraphSettings::default, |t| graph::from_conf(&t));
-        self.ex.graph = Some(GraphUi { s, search: String::new(), search_focus: false, local, panel: false, fit_seq: 0, waiting: true, fill, docked: false, cached: None });
+        self.ex.graph = Some(GraphUi { s, search: String::new(), search_focus: false, local, panel: false, fit_seq: 0, waiting: true, fill, docked: false, cached: None, seen: None });
         self.graph_tick();
     }
 
@@ -88,13 +91,32 @@ impl App {
         let (settings, search, local) = (g.s.clone(), g.search.clone(), g.local);
         self.files_ready();
         self.links_start_index();
-        let (Some(ix), Some(files)) = (self.links.ix.as_ref(), self.files.as_ref()) else {
+        if self.links.ix.is_none() || self.files.is_none() {
             if let Some(g) = self.ex.graph.as_mut() {
                 g.waiting = true;
             }
             return;
-        };
+        }
         let current = self.buf.path().map(Path::to_path_buf);
+        // The index reads files from disk: take in the open note's unsaved links so the graph does not wait for a save.
+        if let Some(p) = current.as_ref() {
+            let dirty = self.buf.is_dirty();
+            let at = (p.clone(), self.buf.version());
+            // The index was built from the project walk, so a note outside it, or one with unsaved edits, is not in it
+            // yet: take its links in once per note and buffer version (the disk text when clean).
+            let stale = self.ex.graph.as_ref().is_some_and(|g| g.seen.as_ref() != Some(&at));
+            if stale && crate::linkindex::wanted(p, &INDEX_EXTS.map(String::from)) {
+                let text = if dirty { self.buf.rope().to_string() } else { std::fs::read_to_string(p).unwrap_or_default() };
+                let root = crate::linkindex::canon(&self.root);
+                if let (Some(ix), Some(files)) = (self.links.ix.as_mut(), self.files.as_deref()) {
+                    ix.set_file(p, &text, files, &root);
+                }
+            }
+            if let Some(g) = self.ex.graph.as_mut() {
+                g.seen = Some(at);
+            }
+        }
+        let (Some(ix), Some(files)) = (self.links.ix.as_ref(), self.files.as_ref()) else { return };
         let sig = Sig {
             generation: ix.generation,
             files: files.len(),

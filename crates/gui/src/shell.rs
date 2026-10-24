@@ -745,6 +745,11 @@ mod tests {
     fn a_menu_survives_editor_repaints_and_closing_restores_the_grid_exactly() {
         let mut r = rig(1100, 700);
         r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1100, 700), true);
+        // The first edit makes the untitled buffer a tab and the strip appears: start from that layout.
+        r.app.handle(key('w'));
+        r.app.draw_frame();
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1100, 700), false);
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1100, 700), false);
         let clean = r.fb.clone();
         open_file_menu(&mut r);
         r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1100, 700), false);
@@ -838,6 +843,11 @@ mod tests {
         // per key, and no pixel outside the status bar, the title and the grid changes.
         let mut r = rig(1100, 700);
         r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1100, 700), true);
+        // The first edit makes the untitled buffer a tab and the strip appears: start from that layout.
+        r.app.handle(key('w'));
+        r.app.draw_frame();
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1100, 700), false);
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1100, 700), false);
         let (before, before_full) = (r.shell.chrome_paints, r.shell.chrome_full_paints);
         let snap = r.fb.clone();
         let keep = [Id { kind: "status", index: 0 }, Id { kind: "title", index: 0 }].map(|i| r.shell.chrome.rect_of(i).unwrap_or_default());
@@ -896,6 +906,11 @@ mod tests {
     fn typing_frames_paint_no_chrome_with_the_titlebar_and_ribbon() {
         let mut r = rig_titlebar(1400, 900);
         r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1400, 900), true);
+        // The first edit makes the untitled buffer a tab and the strip appears: start from that layout.
+        r.app.handle(key('w'));
+        r.app.draw_frame();
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1400, 900), false);
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1400, 900), false);
         assert!(!r.app.chrome_model().ribbon_collapsed && !r.shell.chrome.ribbon_buttons().is_empty(), "the ribbon is expanded");
         assert!(r.shell.wants_titlebar());
         let keep = ["status", "title", "tb.title"].map(|k| rect_of(&r, k));
@@ -907,6 +922,11 @@ mod tests {
         let (w, h) = (1400u32, 900u32);
         let mut r = rig_titlebar(w, h);
         r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (w, h), true);
+        // The first edit makes the untitled buffer a tab and the strip appears: start from that layout.
+        r.app.handle(key('w'));
+        r.app.draw_frame();
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (w, h), false);
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (w, h), false);
         let base = ["status", "title", "tb.title"].map(|k| rect_of(&r, k));
         // A tooltip showing (hover a ribbon button, wait out the delay).
         let b = btn_rect(&r, "Copy");
@@ -1102,9 +1122,15 @@ mod tests {
         r.shell.pointer(up(at.x + 3, at.y + 3), &mut r.app);
         // `App::buf` is private: the open page shows as the model's active page.
         assert!(r.app.chrome_model().active_page.is_some(), "the clicked page is open");
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1100, 700), false);
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1100, 700), false);
         let g = r.shell.grid;
-        let out = r.shell.pointer(down(g.x + 3 * r.painter.cell_size().0 as i32 + 1, g.y + 1), &mut r.app);
-        assert_eq!(out.grid.map(|(c, row, _)| (c, row)), Some((3, 0)));
+        // The page's first line may be a heading drawn larger, so columns are not one cell wide: only the order is fixed.
+        let cw = r.painter.cell_size().0 as i32;
+        let mut at = |col: i32| r.shell.pointer(down(g.x + col * cw + cw / 2, g.y + 1), &mut r.app).grid.map(|(c, row, _)| (c, row));
+        let (a, b) = (at(3), at(6));
+        assert_eq!(a.map(|c| c.1), Some(0));
+        assert!(b.unwrap().0 > a.unwrap().0, "{a:?} {b:?}");
     }
 
     #[test]
@@ -1772,6 +1798,53 @@ mod tests {
         r.shell.pointer(down(b.x + 4, b.y + 4), &mut r.app);
         r.shell.pointer(up(b.x + 4, b.y + 4), &mut r.app);
         assert_ne!(r.app.chrome_model().panes_visible, before);
+    }
+
+    #[test]
+    fn the_ribbon_graph_button_opens_a_panel_that_stays_open_and_takes_room() {
+        let mut r = rig(1500, 800);
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1500, 800), true);
+        let grid_before = r.shell.chrome.rect_of(Id { kind: "grid", index: 0 });
+        let mut hit = false;
+        for t in 0..8 {
+            if let Some(tab) = r.shell.chrome.rect_of(Id { kind: "rb.tab", index: t }) {
+                r.shell.pointer(down(tab.x + 4, tab.y + 4), &mut r.app);
+                r.shell.pointer(up(tab.x + 4, tab.y + 4), &mut r.app);
+                r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1500, 800), false);
+            }
+            if let Some(i) = r.shell.chrome.ribbon_buttons().iter().position(|b| b.btn.label == "Graph") {
+                let b = r.shell.chrome.rect_of(Id { kind: "rb.btn", index: i }).unwrap();
+                r.shell.pointer(down(b.x + 4, b.y + 4), &mut r.app);
+                r.shell.pointer(up(b.x + 4, b.y + 4), &mut r.app);
+                hit = true;
+                break;
+            }
+        }
+        assert!(hit, "found the Graph button");
+        for _ in 0..30 {
+            r.app.tick(Instant::now());
+            r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1500, 800), false);
+        }
+        assert!(matches!(r.app.chrome_model().dialog, Some(meridian_app::dialog_model::DialogModel::Graph(_))), "graph still open");
+        let (before, after) = (grid_before.unwrap(), r.shell.chrome.rect_of(Id { kind: "grid", index: 0 }).unwrap());
+        let pane = r.shell.chrome.rect_of(Id { kind: "graph.pane", index: 0 }).unwrap();
+        assert!(after.w < before.w, "the editor shrinks: {before:?} -> {after:?}");
+        assert!(after.right() <= pane.x && pane.right() == 1500, "the panel sits right of the editor: {after:?} {pane:?}");
+    }
+
+    #[test]
+    fn ctrl_shift_g_opens_the_graph_and_it_stays() {
+        let mut r = rig(1500, 800);
+        r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1500, 800), true);
+        let k = KeyEvent::new(KeyCode::Char('G'), KeyModifiers::CONTROL | KeyModifiers::SHIFT);
+        if !r.shell.key(&k, &mut r.app) {
+            r.app.handle(Event::Key(k));
+        }
+        for _ in 0..30 {
+            r.app.tick(Instant::now());
+            r.shell.frame(&mut r.app, &mut r.painter, &mut r.fb, (1500, 800), false);
+        }
+        assert!(matches!(r.app.chrome_model().dialog, Some(meridian_app::dialog_model::DialogModel::Graph(_))), "graph still open");
     }
 
     #[test]

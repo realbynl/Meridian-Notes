@@ -21,6 +21,11 @@ fn id(kind: &'static str, index: usize) -> Id {
     Id { kind, index }
 }
 
+/// The graph view is docked beside the editor, in a column of its own.
+fn docked_graph(m: &ChromeModel) -> bool {
+    matches!(&m.dialog, Some(meridian_app::dialog_model::DialogModel::Graph(g)) if g.docked)
+}
+
 /// Everything an update depends on besides the model's content; equal keys mean the layout cannot have changed.
 #[derive(Clone, PartialEq)]
 struct Key {
@@ -48,7 +53,7 @@ struct Key {
     ribbon: (usize, bool),
     /// Font and size bits of the ribbon tab and button looks: they decide tab and button widths.
     ribbon_text: [(FontId, u32); 3],
-    /// Open documents and the current one (the document strip shows from two documents).
+    /// Open documents and the current one (the document strip shows while any is listed).
     docs: (usize, Option<usize>),
     /// Font and size bits of the document tab look: they decide tab widths.
     doc_text: (FontId, u32),
@@ -56,6 +61,8 @@ struct Key {
     pages_left: bool,
     /// The ink buttons show (handwriting waits to be saved).
     ink: bool,
+    /// The docked graph panel takes a column beside the editor.
+    graph_docked: bool,
 }
 
 pub struct Chrome {
@@ -237,7 +244,8 @@ impl Chrome {
         let win = (win.0.max(0), win.1.max(0));
         let grid = self.update_layout(model, sheet, text, win);
         // The dialog is laid out last: a docked one sits against the editor grid of this very update.
-        self.sync_dialog(model.dialog.as_ref(), win, grid, sheet, text);
+        let dock = if docked_graph(model) { self.rect_of(id("graph.pane", 0)).unwrap_or(grid) } else { grid };
+        self.sync_dialog(model.dialog.as_ref(), win, dock, sheet, text);
         self.sync_home(model.home.as_ref(), win, grid, sheet, text);
         self.sync_side(&model.side, grid, sheet, text);
         grid
@@ -280,6 +288,7 @@ impl Chrome {
             },
             pages_left: model.pages_left.unwrap_or_else(|| sheet.pages_left()),
             ink: model.ink_pending,
+            graph_docked: docked_graph(model),
         };
         if self.key.as_ref() == Some(&key) {
             return self.grid;
@@ -311,8 +320,8 @@ impl Chrome {
         let same_rest = o.notebooks == m.notebooks
             && o.sections == m.sections
             && o.pages == m.pages
-            // With one document there is no strip, so its list (a dirty flag) changes nothing on screen.
-            && (o.docs.len() <= 1 && m.docs.len() <= 1 || o.docs == m.docs && o.active_doc == m.active_doc)
+            // With no tabs there is no strip, so an empty list changes nothing on screen.
+            && (o.docs.is_empty() && m.docs.is_empty() || o.docs == m.docs && o.active_doc == m.active_doc)
             && (o.active_notebook, o.active_section, o.active_page) == (m.active_notebook, m.active_section, m.active_page)
             && (o.pane_notebooks, o.pane_pages, o.panes_visible, o.chrome_hidden) == (m.pane_notebooks, m.pane_pages, m.panes_visible, m.chrome_hidden)
             && (o.hide_notebooks, o.hide_pages, o.hide_docs, o.pages_left, o.full_window, o.tabs_side) == (m.hide_notebooks, m.hide_pages, m.hide_docs, m.pages_left, m.full_window, m.tabs_side)
@@ -323,8 +332,8 @@ impl Chrome {
             && o.disabled_cmds == m.disabled_cmds;
         // `title` is the OS window title: kept in the model but not drawn, so it damages nothing.
         let (status, page_title, window_title, date) = (o.status != m.status, o.page_title != m.page_title, o.title != m.title, o.page_date != m.page_date);
-        // A hidden strip's list moved (one document turned dirty): keep it, repaint nothing for it.
-        let docs_quiet = m.docs.len() <= 1 && (!o.docs.same(&m.docs) || o.active_doc != m.active_doc);
+        // A hidden strip's list moved: keep it, repaint nothing for it.
+        let docs_quiet = m.docs.is_empty() && (!o.docs.same(&m.docs) || o.active_doc != m.active_doc);
         if !same_rest || !(status || page_title || window_title || date || docs_quiet) {
             return false;
         }
@@ -427,10 +436,15 @@ impl Chrome {
         if left {
             row.reverse();
         }
+        if docked_graph(m) {
+            // The graph panel is a column of the layout at the far right, so the editor grid reflows around it.
+            let w = (centre_w * 2 / 5).max(260.min(centre_w)).max(0);
+            row.push(Node::new(id("graph.pane", 0)).size(Size::Fixed(w), fill));
+        }
         let body = row.into_iter().fold(Node::new(id("body", 0)).axis(Axis::Row).size(fill, fill), Node::child);
-        // Open-document tabs, only from two documents on: each holds an optional dirty dot, the name (cut at a
+        // Open-document tabs, whenever a document is open (the app lists none for an untouched untitled buffer): each holds an optional dirty dot, the name (cut at a
         // layout maximum) and a close button, and is never wider than the strip.
-        let show_docs = m.docs.len() > 1 && !m.hide_docs;
+        let show_docs = !m.docs.is_empty() && !m.hide_docs;
         let doc_look = sheet.look(W::DocTab, State::Normal);
         let (icon, gap) = (sheet.slot(Slot::IconSize).max(1), sheet.slot(Slot::Gap));
         let label_max = (DOC_LABEL_MAX_LOGICAL_W as f32 * self.scale).round() as i32;
@@ -1574,9 +1588,9 @@ mod doctab_tests {
     }
 
     #[test]
-    fn the_strip_shows_only_with_two_or_more_documents_between_the_sections_and_the_body() {
+    fn the_strip_shows_when_any_document_is_listed_between_the_sections_and_the_body() {
         let (mut m, s, mut t) = fixture(3);
-        for n in [0, 1] {
+        for n in [0] {
             m.docs = docs(n);
             let mut c = Chrome::new();
             c.update(&m, &s, &mut t, (1200, 800));
@@ -1584,10 +1598,10 @@ mod doctab_tests {
             assert!(c.rects().iter().all(|(i, _)| !i.kind.starts_with("doc.")));
             assert_eq!(c.rect_of(id("body", 0)).unwrap().y, c.rect_of(id("sections", 0)).unwrap().bottom());
         }
-        m.docs = docs(2);
+        m.docs = docs(1);
         let mut c = Chrome::new();
         c.update(&m, &s, &mut t, (1200, 800));
-        let strip = c.rect_of(id("doc.strip", 0)).expect("two documents: a strip");
+        let strip = c.rect_of(id("doc.strip", 0)).expect("one document: a strip");
         let (sec, body, centre) = (c.rect_of(id("sections", 0)).unwrap(), c.rect_of(id("body", 0)).unwrap(), c.rect_of(id("centre", 0)).unwrap());
         assert_eq!((strip.x, strip.w, strip.h), (centre.x, centre.w, s.slot(Slot::DocTabHeight)));
         assert_eq!((strip.y, body.y), (sec.bottom(), strip.bottom()));
@@ -1686,9 +1700,9 @@ mod doctab_tests {
         assert!(c.rect_of(id("doc.tab", 2)).is_some());
         let mut m5 = m4.clone();
         m5.version += 1;
-        m5.docs = docs(1);
+        m5.docs = docs(0);
         c.update(&m5, &s, &mut t, (1200, 800));
-        assert!(c.rect_of(id("doc.strip", 0)).is_none(), "back to one document: the strip goes");
+        assert!(c.rect_of(id("doc.strip", 0)).is_none(), "no documents listed: the strip goes");
     }
 
     #[test]
@@ -1711,18 +1725,17 @@ mod doctab_quiet_tests {
     use crate::chrome::testkit::{docs, fixture};
 
     #[test]
-    fn a_single_documents_dirty_flag_rebuilds_and_repaints_nothing() {
+    fn with_no_documents_listed_a_status_change_lays_nothing_out() {
         let (mut m, s, mut t) = fixture(3);
-        m.docs = docs(1);
+        m.docs = docs(0);
+        m.active_doc = None;
         let mut c = Chrome::new();
         c.update(&m, &s, &mut t, (1200, 800));
         c.take_damage();
         let mut m2 = m.clone();
         m2.version += 1;
-        m2.docs[0].dirty = true;
+        m2.status.left = "Ln 3".into();
         c.update(&m2, &s, &mut t, (1200, 800));
-        assert_eq!(c.builds, 1, "no strip with one document: nothing to lay out");
-        assert_eq!(c.take_damage(), super::super::Damage::None);
-        assert!(c.model().docs[0].dirty, "the model is still current");
+        assert_eq!(c.builds, 1, "no strip with no documents: a status change lays nothing out");
     }
 }

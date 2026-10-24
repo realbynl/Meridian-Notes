@@ -85,6 +85,10 @@ pub fn build(ix: &Index, files: &[PathBuf], root: &Path, current: Option<&Path>,
         total += 1;
         add(&mut raws, r.key.clone(), &|| note(f));
     }
+    // The open note is always a node, even when the project walk does not list it (opened from Recent, outside the folders).
+    if let Some(c) = current.as_ref().filter(|c| wanted(c, &exts)) {
+        add(&mut raws, c.to_string_lossy().into_owned(), &|| note(c));
+    }
     let mut edges: Vec<(usize, usize)> = Vec::new();
     for (a, b) in ix.edges() {
         let i = add(&mut raws, canon(&a).to_string_lossy().into_owned(), &|| note(&a));

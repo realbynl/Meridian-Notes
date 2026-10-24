@@ -182,6 +182,10 @@ impl App {
 
     /// The open documents in tab order, for the chrome's document tabs.
     fn ui_docs(&self) -> List {
+        // Nothing open yet: a single untitled buffer nobody has touched is not a tab.
+        if self.docs.len() == 1 && self.buf.path().is_none() && !self.buf.is_dirty() {
+            return List::default();
+        }
         (0..self.docs.len())
             .map(|i| {
                 let b = if i == self.cur { &self.buf } else { &self.docs[i].buf };

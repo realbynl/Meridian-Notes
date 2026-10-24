@@ -53,8 +53,8 @@ pub(crate) struct GraphView {
 pub(crate) fn graph_view(m: &GraphModel, win: (i32, i32), dock: Rect, sheet: &StyleSheet, text: &mut TextEngine) -> GraphView {
     let full = Rect::new(0, 0, win.0, win.1);
     let area = if dock.is_empty() { full } else { dock.intersect(&full) };
-    // The panel takes the right side of the editor area and leaves the rest to the editor.
-    let outer = if m.docked { let w = (area.w * 2 / 5).max(260.min(area.w)); Rect::new(area.right() - w, area.y, w, area.h) } else { area };
+    // A docked panel is handed its own column of the layout as `dock`.
+    let outer = area;
     let u = sheet.slot(Slot::DialogRowHeight).max(1);
     let gap = sheet.slot(Slot::Gap);
     let look = sheet.look(crate::style::W::DialogButton, crate::style::State::Normal);

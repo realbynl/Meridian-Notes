@@ -11,7 +11,7 @@ use std::sync::mpsc;
 pub(super) const BACKLINK_W: usize = 30;
 const HOVER_DELAY: Duration = Duration::from_millis(300);
 const HOVER_LINES: usize = 12;
-const INDEX_EXTS: [&str; 3] = ["md", "markdown", "txt"];
+pub(super) const INDEX_EXTS: [&str; 3] = ["md", "markdown", "txt"];
 
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum Status {

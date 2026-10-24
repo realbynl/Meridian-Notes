@@ -28,7 +28,7 @@ Everything is searchable, always. Every thing that can exist in the app can be f
 The guiding rule: core stays small and boring, plugins make it yours. But "core" here includes editing and media.
 Part II — The Spec
 3. Core architecture & philosophy
-
+[[Cargo.toml]]
 [MVP] FOSS — free and open source, with a licence that keeps derivatives open.
 [MVP] Local-first — the file on disk is the real data. The app is a viewer over it.
 [MVP] Zero-knowledge encryption — encrypted on-device before sync, always on and not switchable off.
@@ -848,3 +848,6 @@ Peer-to-peer sync — worth the complexity, or is self-hosted enough?
 The plain-file mirror versus the block model — Markdown has no concept of a block with an ID and a position. Thymer solves it with a two-way mirror and accepts the impedance mismatch; Ideon does not attempt plain files at all. Resolving this is the hardest technical question in the document.
 Video editing ambition — trim-and-caption, or a real editor? The answer changes the size of the project substantially.
 How far does "everything is a block" go? Ideon ships a terminal, an HTTP endpoint and a cron scheduler as blocks. That is either the most interesting idea in the set or a scope trap. Worth deciding deliberately rather than drifting into it.
+
+![[handwriting/1a1695f9c2b0001.svg]]
+

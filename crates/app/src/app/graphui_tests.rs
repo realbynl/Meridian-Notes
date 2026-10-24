@@ -236,3 +236,35 @@ fn the_graph_button_toggles_a_local_panel_that_follows_the_open_note_and_leaves_
     assert!(app.chrome_model().dialog.is_none(), "the button toggles it off");
     let _ = std::fs::remove_dir_all(d);
 }
+
+#[test]
+fn unsaved_links_in_the_open_note_show_in_the_graph_without_saving() {
+    let _g = crate::skin::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _e = EnvGuard::new();
+    let (mut app, d) = project("unsaved", |nb| Args { dirs: vec![nb.clone()], files: vec![nb.join("lonely.md")], ..Args::default() });
+    for c in "[[gamma]]".chars() {
+        press(&mut app, KeyCode::Char(c));
+    }
+    assert!(app.buf.is_dirty());
+    app.run(Cmd::GraphView(true));
+    let m = ready(&mut app);
+    assert_eq!(labels(&m), ["gamma", "lonely"], "the typed link is an edge before any save");
+    let _ = std::fs::remove_dir_all(d);
+}
+
+#[test]
+fn a_note_outside_the_project_folders_is_in_the_local_graph_with_its_links() {
+    let _g = crate::skin::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _e = EnvGuard::new();
+    let (mut app, d) = project("outside", |nb| {
+        let out = nb.parent().unwrap().join("elsewhere");
+        std::fs::create_dir_all(&out).unwrap();
+        std::fs::write(out.join("guide .md"), "see [[alpha]] and [[nothing]]\n").unwrap();
+        Args { dirs: vec![nb.clone()], files: vec![out.join("guide .md")], ..Args::default() }
+    });
+    app.run(Cmd::GraphView(true));
+    let m = ready(&mut app);
+    assert!(m.nodes.iter().any(|n| n.label == "guide " && n.current), "{:?}", labels(&m));
+    assert!(m.nodes.iter().any(|n| n.label == "alpha"), "{:?}", labels(&m));
+    let _ = std::fs::remove_dir_all(d);
+}
