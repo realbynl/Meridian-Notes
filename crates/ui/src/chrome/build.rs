@@ -193,7 +193,7 @@ impl Chrome {
     /// Among equals the later rectangle (the deeper widget) wins.
     pub fn hit_test(&self, x: i32, y: i32) -> Option<Id> {
         let tier = |kind: &str| match kind {
-            "nb.thumb" | "pg.thumb" | "sec.left" | "sec.right" | "sec.add" | "pg.add" | "doc.add" | "split.nb" | "split.pg" | "tb.qa" | "rb.discord" | "tb.opts" | "tb.min" | "tb.max" | "tb.close" | "rb.btn" | "rb.gdrop" | "rb.file" | "rb.tab" | "rb.collapse" | "search" | "fw.menu" | "fw.pen" | "fw.expand" | "fw.pad" | "rb.expand" | "ink.finish" | "ink.shrink" => 0,
+            "nb.thumb" | "pg.thumb" | "sec.left" | "sec.right" | "sec.add" | "pg.add" | "split.nb" | "split.pg" | "tb.qa" | "rb.discord" | "tb.opts" | "tb.min" | "tb.max" | "tb.close" | "rb.btn" | "rb.gdrop" | "rb.file" | "rb.tab" | "rb.collapse" | "search" | "fw.menu" | "fw.pen" | "fw.expand" | "fw.pad" | "rb.expand" | "ink.finish" | "ink.shrink" => 0,
             "doc.close" => 0,
             "sec.tab" | "nb.row" | "pg.row" | "doc.tab" => 1,
             "grid" => 3,
@@ -442,9 +442,9 @@ impl Chrome {
             row.push(Node::new(id("graph.pane", 0)).size(Size::Fixed(w), fill));
         }
         let body = row.into_iter().fold(Node::new(id("body", 0)).axis(Axis::Row).size(fill, fill), Node::child);
-        // Open-document tabs (none for an untouched untitled buffer, but the strip and its add button stay): each holds an optional dirty dot, the name (cut at a
+        // Open-document tabs, whenever a document is open (the app lists none for an untouched untitled buffer): each holds an optional dirty dot, the name (cut at a
         // layout maximum) and a close button, and is never wider than the strip.
-        let show_docs = !m.hide_docs;
+        let show_docs = !m.docs.is_empty() && !m.hide_docs;
         let doc_look = sheet.look(W::DocTab, State::Normal);
         let (icon, gap) = (sheet.slot(Slot::IconSize).max(1), sheet.slot(Slot::Gap));
         let label_max = (DOC_LABEL_MAX_LOGICAL_W as f32 * self.scale).round() as i32;
@@ -463,8 +463,7 @@ impl Chrome {
         let doc_total = doc_w.iter().fold(0i32, |a, w| a.saturating_add(*w));
         let mut centre = Node::new(id("centre", 0)).axis(Axis::Column).size(fill, fill).child(strip);
         if show_docs {
-            let strip = Node::new(id("doc.strip", 0)).axis(Axis::Row).size(fill, Size::Fixed(sheet.slot(Slot::DocTabHeight)));
-            centre = centre.child(strip.child(Node::new(id("doc.tabs", 0)).size(fill, fill)).child(Node::new(id("doc.add", 0)).size(Size::Fixed(chev), fill)));
+            centre = centre.child(Node::new(id("doc.strip", 0)).size(fill, Size::Fixed(sheet.slot(Slot::DocTabHeight))));
         }
         let centre = centre.child(body);
         let mut middle = Node::new(id("middle", 0)).axis(Axis::Row).size(fill, fill);
@@ -548,7 +547,7 @@ impl Chrome {
         let nb_list = find(&rects, "nb.list");
         let pg_list = find(&rects, "pg.list");
         let tabs = find(&rects, "sec.tabs");
-        let doc_strip = find(&rects, "doc.tabs");
+        let doc_strip = find(&rects, "doc.strip");
         let range = |content: i32, view: i32| content.saturating_sub(view).max(0);
         self.scrolls[0] = self.scrolls[0].clamp(0, range(tab_total, tabs.map_or(strip_w, |r| r.w)));
         self.scrolls[1] = self.scrolls[1].clamp(0, range(nb_content, nb_list.map_or(0, |r| r.h)));
@@ -1595,10 +1594,9 @@ mod doctab_tests {
             m.docs = docs(n);
             let mut c = Chrome::new();
             c.update(&m, &s, &mut t, (1200, 800));
-            let strip = c.rect_of(id("doc.strip", 0)).expect("{n} documents: the strip stays for its add button");
-            assert!(c.rect_of(id("doc.add", 0)).is_some());
-            assert!(c.rects().iter().all(|(i, _)| i.kind != "doc.tab" && i.kind != "doc.close"));
-            assert_eq!(c.rect_of(id("body", 0)).unwrap().y, strip.bottom());
+            assert!(c.rect_of(id("doc.strip", 0)).is_none(), "{n} documents: no strip");
+            assert!(c.rects().iter().all(|(i, _)| !i.kind.starts_with("doc.")));
+            assert_eq!(c.rect_of(id("body", 0)).unwrap().y, c.rect_of(id("sections", 0)).unwrap().bottom());
         }
         m.docs = docs(1);
         let mut c = Chrome::new();
@@ -1704,7 +1702,7 @@ mod doctab_tests {
         m5.version += 1;
         m5.docs = docs(0);
         c.update(&m5, &s, &mut t, (1200, 800));
-        assert!(c.rect_of(id("doc.tab", 0)).is_none() && c.rect_of(id("doc.add", 0)).is_some(), "no documents listed: no tabs, the add button stays");
+        assert!(c.rect_of(id("doc.strip", 0)).is_none(), "no documents listed: the strip goes");
     }
 
     #[test]
