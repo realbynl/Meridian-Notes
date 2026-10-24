@@ -440,6 +440,8 @@ pub fn builtin() -> Vec<Entry> {
         e!("next-buffer-alt", Some("alt+pagedown"), Cmd::NextBuffer),
         e!("prev-buffer", Some("alt+left"), Cmd::PrevBuffer),
         e!("prev-buffer-alt", Some("alt+pageup"), Cmd::PrevBuffer),
+        e!("next-buffer-ctrl", Some("ctrl+tab"), Cmd::NextBuffer),
+        e!("prev-buffer-ctrl", Some("ctrl+shift+tab"), Cmd::PrevBuffer),
         e!("tab-1", Some("ctrl+1"), Cmd::GotoTab(0)),
         e!("tab-2", Some("ctrl+2"), Cmd::GotoTab(1)),
         e!("tab-3", Some("ctrl+3"), Cmd::GotoTab(2)),
@@ -806,9 +808,7 @@ pub fn key_spec(k: KeyEvent) -> Option<String> {
         }
         KeyCode::Enter => "enter".into(),
         KeyCode::Tab => "tab".into(),
-        KeyCode::BackTab => {
-            return Some("shift+tab".into()); // the terminal already folded Shift into the key
-        }
+        KeyCode::BackTab => "tab".into(), // Shift is implied by the key itself (added below)
         KeyCode::Esc => "esc".into(),
         KeyCode::Insert => "insert".into(),
         KeyCode::Menu => "menu".into(),
@@ -831,7 +831,7 @@ pub fn key_spec(k: KeyEvent) -> Option<String> {
         (KeyModifiers::ALT, "alt+"),
         (KeyModifiers::SHIFT, "shift+"),
     ] {
-        if m.contains(flag) || (flag == KeyModifiers::SHIFT && k.code == KeyCode::Char('+')) {
+        if m.contains(flag) || (flag == KeyModifiers::SHIFT && matches!(k.code, KeyCode::Char('+') | KeyCode::BackTab)) {
             s.push_str(p);
         }
     }
@@ -1276,6 +1276,9 @@ mod tests {
         let ev = |code, m| KeyEvent::new(code, m);
         assert!(matches!(km.resolve(ev(KeyCode::Enter, c)), Some(Cmd::NewlineBelow)));
         assert!(matches!(km.resolve(ev(KeyCode::Left, KeyModifiers::ALT)), Some(Cmd::PrevBuffer)));
+        assert!(matches!(km.resolve(ev(KeyCode::Tab, KeyModifiers::CONTROL)), Some(Cmd::NextBuffer)));
+        assert!(matches!(km.resolve(ev(KeyCode::BackTab, KeyModifiers::CONTROL | KeyModifiers::SHIFT)), Some(Cmd::PrevBuffer)));
+        assert!(matches!(km.resolve(ev(KeyCode::BackTab, KeyModifiers::SHIFT)), Some(Cmd::Unindent)));
         assert!(matches!(km.resolve(ev(KeyCode::Right, KeyModifiers::ALT)), Some(Cmd::NextBuffer)));
         assert!(matches!(km.resolve(ev(KeyCode::Enter, KeyModifiers::SHIFT)), Some(Cmd::FollowLink)));
     }

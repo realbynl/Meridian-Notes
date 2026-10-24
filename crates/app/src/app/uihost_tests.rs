@@ -772,6 +772,16 @@ fn the_docs_list_holds_the_open_documents_in_tab_order() {
 }
 
 #[test]
+fn a_fresh_untitled_buffer_is_listed_as_a_tab() {
+    let _g = crate::skin::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _e = EnvGuard::new();
+    let (mut app, _nb) = app_with_notebook();
+    app.docs.truncate(1);
+    let m = app.chrome_model().clone();
+    assert_eq!((m.docs.iter().map(|d| d.label.as_str()).collect::<Vec<_>>(), m.active_doc), (["untitled"].to_vec(), Some(0)));
+}
+
+#[test]
 fn select_doc_switches_to_that_document_and_an_unknown_id_is_ignored() {
     let _g = crate::skin::TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let _e = EnvGuard::new();
