@@ -134,7 +134,7 @@ Each row lists the features in that section by verdict. Tags are the summary's.
 - CONFLICT (scope): web companion access. A web client is web tech; if it lives in this repo, it breaks the "no web technologies" rule. A separate project would not.
 
 **§21 Extensibility**
-- EXISTS: documented plugin API (`docs/legacy/PLUGINS.md`, `crates/pluginkit`), example plugins (`examples/plugins`), plugin directory (`scripts/install-plugins.sh`, partial), themes and layout (skins piece 1 and 2, `docs/skins.md`).
+- EXISTS: documented plugin API (`crates/pluginkit`), example plugins (`examples/plugins`), plugin directory (`scripts/install-plugins.sh`, partial), themes and layout (skins piece 1 and 2, `docs/skins.md`).
 - MODERATE: plugin types (panes and panels exist; more types need the protocol to grow, compat note), community review pipeline and merge path (process, not code).
 - HARD: sandboxing and permissions (out-of-process plugins exist; a permission model and OS sandboxing are new work).
 

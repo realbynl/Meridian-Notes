@@ -2290,7 +2290,7 @@ fn rebinding_a_key_updates_the_tooltip_keys() {
 }
 ```
 
-(Use the real keys.conf line syntax of `keysui.rs`/`docs`: check one example with `grep -rn "keys.conf" docs/legacy | head -3` and adapt the config line; `app.keys` and `refresh_cmd_keys` are crate-private, which the tests in this module can reach.)
+(Use the real keys.conf line syntax of `keysui.rs`/`docs`: check one example with `grep -rn "keys.conf" docs | head -3` and adapt the config line; `app.keys` and `refresh_cmd_keys` are crate-private, which the tests in this module can reach.)
 
 In `style.rs` tests: `ribbon_slots_have_their_defaults_and_scale` asserting `Slot::RibbonTabHeight`=32, `RibbonHeight`=93 at 1x and 140 at 1.5x (`(93*1.5+0.5).floor()` = 140).
 

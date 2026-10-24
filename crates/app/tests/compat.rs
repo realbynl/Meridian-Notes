@@ -8,7 +8,7 @@ use meridian_app::{bookmarks, cards, keyconf, layouts, links};
 fn cloze_card_ids_are_stable() {
     let src = include_str!("fixtures/clozes.md");
     let ids: Vec<String> = cards::cards_in("notes/clozes.md", src).iter().map(|c| format!("{}:{:016x}", c.num, c.id)).collect();
-    // FNV-1a over path, number and hidden texts (docs/legacy/ARCHITECTURE.md, milestone 39)
+    // FNV-1a over path, number and hidden texts (milestone 39)
     assert_eq!(ids, vec!["1:f07486b0b6c7ae65", "2:b9cc143c222732d2"]);
 }
 

@@ -4,7 +4,7 @@
 
 **Goal:** Order the user's feature-list suggestions (reviewed 2026-10-13) after the work already planned, say which are in or out, and pin the decisions the user has made.
 
-**Architecture:** Everything lands as small modules in `crates/app` or as out-of-process plugins on the existing plugin protocol (`docs/legacy/PLUGINS.md`). Anything that needs a drawing layer beyond the cell grid waits for Phase 4 of the GUI port plan.
+**Architecture:** Everything lands as small modules in `crates/app` or as out-of-process plugins on the existing plugin protocol. Anything that needs a drawing layer beyond the cell grid waits for Phase 4 of the GUI port plan.
 
 **Tech Stack:** Existing crates only unless an item says otherwise; every new crate needs the user's OK first.
 
@@ -95,7 +95,7 @@ Office/PDF/video editors, face and semantic search, speech-to-text and OCR pipel
 
 ## Answers received (2026-10-13) and what is still open
 
-- **Modes:** the user assumes the list's "modes" are the ones already integrated (`docs/legacy/MODES.md`). Assumption, not verified against the list; check when the list is re-read.
+- **Modes:** the user assumes the list's "modes" are the ones already integrated. Assumption, not verified against the list; check when the list is re-read.
 - **"Tape tool":** the user is unsure what it is. FLAGGED: do not build anything for it until the list entry is read and explained.
 - **Ctrl+V images (D4 follow-up):** today the `meridian-paste-special` plugin (`crates/plugins/src/bin/meridian-paste-special.rs`) saves to `$PASTE_SCRAPBOOK_ROOT`, default `~/Pictures/+Scrapbook`, after asking which folder (`scan_folders`). Wanted for Meridian: save automatically into the current vault/folder, with no question. Handwriting (D4) then lives in `<resources>/handwriting/` inside that same place. This is a Wave 1 item (below); keep the env var and the old default as the fallback when no vault is open, so existing users are unchanged.
 - **a notebook app source:** both exported files and the Microsoft account API are wanted. Export import first (no network, no new crate); the API route needs an HTTP/OAuth crate and the user's OK, so it comes after.

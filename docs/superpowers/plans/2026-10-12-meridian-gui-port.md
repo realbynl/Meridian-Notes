@@ -16,7 +16,7 @@
 - Budgets (measured in release builds on this machine, recorded in `docs/perf.md` by Task 2.1): cold start to first painted frame <= 60 ms; keypress to updated pixels <= 8 ms at p95 on a 100k-line file; idle CPU 0% (no repaint without a cause); release binary <= 30 MB (raised 2026-10-13).
 - Every colour comes from the theme; no literal RGB in drawing code outside `theme.rs`.
 - The terminal build keeps passing `cargo test --workspace` after every task until Phase 6 says otherwise.
-- the legacy editor compatibility: do not change note syntax, `keys.conf`/`settings.conf` grammar, the card/schedule/bookmark/history/swap file formats, or the plugin protocol (`docs/legacy/PLUGINS.md`). Task 0.2 pins them with fixtures.
+- the legacy editor compatibility: do not change note syntax, `keys.conf`/`settings.conf` grammar, the card/schedule/bookmark/history/swap file formats, or the plugin protocol. Task 0.2 pins them with fixtures.
 - Dependency list stays small; adding a crate beyond the Tech Stack needs the user's OK.
 - The repo is not under git yet. Task 0.1 runs `git init` (user-confirmed) so the commit steps below work; if the user declines, skip the commit steps and keep a `cp -r` snapshot per phase.
 
@@ -160,7 +160,7 @@ fn headless_app_types_and_renders() {
 - Create: `crates/meridian/src/theme.rs` (name may collide with the existing `Theme` in `app.rs`: check `grep -n "struct Theme" crates/meridian/src -r` first and extend that instead)
 - Test: `crates/meridian/src/theme.rs`
 
-**Interfaces:** Consumes: `Style` colours are `u32`: palette index or `rgb()` (see `docs/legacy/ARCHITECTURE.md`, `meridian_term::Style`). Produces:
+**Interfaces:** Consumes: `Style` colours are `u32`: palette index or `rgb()` (see `meridian_term::Style`). Produces:
 
 ```rust
 pub struct Palette { pub ansi: [u32; 16], pub default_fg: u32, pub default_bg: u32 }
